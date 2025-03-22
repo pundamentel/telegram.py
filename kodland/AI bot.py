@@ -1,12 +1,13 @@
 import telebot
-import numpy
+import numpy as np
 import keras
 import requests
-import tensorflow 
+import tensorflow as tf
 from bot_logic import gen_pass, gen_emodji, flip_coin
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackContext
 from imageai.Detection import ObjectDetection
+from PIL import Image, ImageOps
 
 
 bot = telebot.TeleBot("7564141840:AAG3vZdxtSWWiDsqzQxNPqDkZ6We6Y6_2dg")
@@ -45,7 +46,7 @@ detector.setModelPath(MODEL_PATH)
 detector.loadModel()
 
 
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start2'])
 def send_welcome(message):
     bot.reply_to(message, "Send me an image, and I'll detect objects in it!")
 
@@ -81,6 +82,42 @@ def detect_objects(message):
 @bot.message_handler(func=lambda message: True)
 def handle_other_messages(message):
     bot.reply_to(message, "❌ Please send an image.")
+
+#classification
+model = tf.keras.models.load_model("keras_model.h5", compile=False)
+model.save('new_model.h5')
+class_names = open("labels.txt", "r").readlines()
+
+def classify_image(image_path):
+    data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+    image = Image.open(image_path).convert("RGB")
+    size = (224, 224)
+    image = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+    image_array = np.asarray(image)
+    normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
+    data[0] = normalized_image_array
+    prediction = model.predict(data)
+    index = np.argmax(prediction)
+    class_name = class_names[index].strip()
+    confidence_score = prediction[0][index]
+    return class_name, confidence_score
+
+@bot.message_handler(commands=['classification'])
+def ask_for_image(message):
+    bot.reply_to(message, "Please send an image for classification.")
+
+@bot.message_handler(content_types=['photo'])
+def classify_received_image(message):
+    chat_id = message.chat.id
+    file_info = bot.get_file(message.photo[-1].file_id)
+    file_path = file_info.file_path
+    image_url = f"https://api.telegram.org/file/botYOUR_BOT_TOKEN/{file_path}"
+    image_data = requests.get(image_url).content
+    input_path = "input_classification.jpg"
+    with open(input_path, "wb") as f:
+        f.write(image_data)
+    class_name, confidence = classify_image(input_path)
+    bot.reply_to(message, f"Class: {class_name}\nConfidence Score: {confidence:.2f}")
 
 
 bot.polling()
