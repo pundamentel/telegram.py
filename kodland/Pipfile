@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pytelegrambotapi = "*"
+numpy = "*"
+keras = "*"
+requests = "*"
+pillow = "*"
+imageai = "*"
+torchvision = "*"
+opencv-python = "*"
+telegram = "*"
+tensorflow = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"
